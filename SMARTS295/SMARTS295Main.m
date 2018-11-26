@@ -52,17 +52,32 @@ function outStruct = SMARTS295Main(smartsHome,varargin)
 %and smarts295.scn.txt. smarts295.inp.txt and smarts295.out.txt are always
 %produced, normally smarts295.ext.txt is produced, and smarts295.scn.txt
 %might be depending on inputs.
+%% create new smarts directory temp directory
+%id of worker
+t=getCurrentTask();
+if isempty(t)
+    wid='1';
+else
+    wid=num2str(t.ID);
+end
+%ds=datestr(now,'yyyymmddHHMMss');
+psmartsHome=fullfile('C:\raid','temp',wid);
+%only copy files if they don't exist
+if exist(psmartsHome,'dir')~=7
+    mkdir(psmartsHome);
+    system(['robocopy "',smartsHome,'"  "',psmartsHome,'" /s'])
+end
 
-%% The normal SMARTS files, delete if exist
+%The normal SMARTS files, delete if exist
 inputSMARTS = 'smarts295.inp.txt';
 outputSMARTS = {'smarts295.out.txt','smarts295.ext.txt','smarts295.scn.txt'};
 scriptSMARTS = 'smartsexe.bat';
 
 % create the SMARTS script in a temporary file
-[fileID,errmsg] = fopen(fullfile(smartsHome,scriptSMARTS),'w');
+[fileID,errmsg] = fopen(fullfile(psmartsHome,scriptSMARTS),'w');
 assert(fileID>0,errmsg)
-fprintf(fileID,'cd "%s"\n%s\n',smartsHome,'smarts295bat.exe');
-smartsRun = fullfile(smartsHome,scriptSMARTS);
+fprintf(fileID,'cd "%s"\n%s\n',psmartsHome,'smarts295bat.exe');
+smartsRun = fullfile(psmartsHome,scriptSMARTS);
 fclose(fileID);
 
 %Input could include an input structure, and/or a set of Name/Value pairs
@@ -90,19 +105,19 @@ for k=1:length(fn)
 end
 
 %delete files as necessary
-if exist(fullfile(smartsHome,inputSMARTS),'file')==2
-    delete(fullfile(smartsHome,inputSMARTS));
+if exist(fullfile(psmartsHome,inputSMARTS),'file')==2
+    delete(fullfile(psmartsHome,inputSMARTS));
 end
 for k=1:length(outputSMARTS)
-    if exist(fullfile(smartsHome,outputSMARTS{k}),'file')==2
-        delete(fullfile(smartsHome,outputSMARTS{k}));
+    if exist(fullfile(psmartsHome,outputSMARTS{k}),'file')==2
+        delete(fullfile(psmartsHome,outputSMARTS{k}));
     end
 end
 
 %% create the input file for SMARTS
-nLines = struct2SMARTSinput(C,fullfile(smartsHome,inputSMARTS));
+nLines = struct2SMARTSinput(C,fullfile(psmartsHome,inputSMARTS));
 assert(nLines>0,'write to file ''%s'' failed',...
-    fullfile(smartsHome,inputSMARTS))
+    fullfile(psmartsHome,inputSMARTS))
 
 %% run SMARTS
 [status,cmdout] = system(smartsRun);
@@ -111,23 +126,23 @@ delete(smartsRun);
 
 %% retrieve output
 % text output
-tx = ['type ' '"' fullfile(smartsHome,outputSMARTS{1}) '"'];
+tx = ['type ' '"' fullfile(psmartsHome,outputSMARTS{1}) '"'];
 [status,smartsText] = system(tx);
 assert(status==0,smartsText);
 
 % spectral table
-if exist(fullfile(smartsHome,outputSMARTS{2}),'file')==2
+if exist(fullfile(psmartsHome,outputSMARTS{2}),'file')==2
     if iszang
-        spectralTbl = getSMARTSspectrum(fullfile(smartsHome,...
+        spectralTbl = getSMARTSspectrum(fullfile(psmartsHome,...
             outputSMARTS{2}),cosd(zenith));
     else
-        spectralTbl = getSMARTSspectrum(fullfile(smartsHome,outputSMARTS{2}));
+        spectralTbl = getSMARTSspectrum(fullfile(psmartsHome,outputSMARTS{2}));
     end
 end
 
 % scan table - still need to write getSMARTSscan function
-if exist(fullfile(smartsHome,outputSMARTS{3}),'file')==2
-    scanTbl = getSMARTSscan(fullfile(smartsHome,outputSMARTS{3}));
+if exist(fullfile(psmartsHome,outputSMARTS{3}),'file')==2
+    scanTbl = getSMARTSscan(fullfile(psmartsHome,outputSMARTS{3}));
 end
 
 %% output structure
@@ -139,4 +154,6 @@ if exist('scanTbl','var')==1
     outStruct.scanTbl = scanTbl;
 end
 outStruct.smartsText = smartsText;
+%%delete temporary diretory
+% system(['rmdir "' psmartsHome '" /S /Q']);
 end

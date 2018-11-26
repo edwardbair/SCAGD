@@ -7,7 +7,7 @@ cZ=0:.02:1;
 
 for c=1:length(cZ)
     atmosP = defaultSMARTSinput('mlw','cosZ',max(cZ(c),.01),'altit',3);
-    S = SMARTS295Main(getSMARTShome,'',atmosP);
+    S = SMARTS295Main(getSMARTShome,atmosP);
     T = S.spectralTbl;
     thisTbl = SnowCloudIntgRefl(T.waveL,'nm',[T.HorzDirect T.HorzDiffuse],...
         'snow','cosZ',cZ(c),'radius',rad,'wavelength',[280 4000],...
